@@ -9,6 +9,8 @@
 #define IPV6_EXT_ROUTING   43
 #define IPV6_ENCAP 41           // [RFC2473]
 
+#define ipv6_optlen(p)  (((p)->hdrlen+1) << 3)
+
 struct bpf_map_def SEC("maps") prefix_map = {
 	.type        = BPF_MAP_TYPE_ARRAY,
 	.key_size    = sizeof(__u32),
@@ -27,10 +29,11 @@ static inline int check(struct cidr *a, struct in6_addr ip) {
 	if(a->prefix == 0)
 		return 1;
 
-	if ((net1 == net2) && ((i == 15) || !memcmp(&a->addr.v6.s6_addr, &ip.s6_addr, 15-i)))
+	/* in the 5.4er it seems that we do not have memcmp? */
+	/*if ((net1 == net2) && ((i == 15) || !__builtin_memcmp(&a->addr.v6.s6_addr, &ip.s6_addr, 15-i)))
 	{
 		return 1;
-	}
+	}*/
 
 	return 0;
 }

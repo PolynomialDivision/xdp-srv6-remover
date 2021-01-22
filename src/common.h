@@ -7,8 +7,9 @@
 #include <linux/udp.h>
 #include <linux/tcp.h>
 #include <linux/in.h>
-#include <linux/bpf.h>
 #include <linux/in.h>
+
+#include <linux/bpf.h>
 
 #include <inttypes.h>
 #include <stdbool.h>
