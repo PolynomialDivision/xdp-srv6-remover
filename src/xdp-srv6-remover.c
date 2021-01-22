@@ -1,22 +1,22 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 
 #include "uxdp.h"
+#include "common.h"
 
 int
 main(int argc, char **argv)
 {
-	/*struct xdp_map xdp_map = {
+	struct xdp_map xdp_map = {
 		.prog = "xdp_srv6_func",
-		.map = "ip_stats_map",
+		.map = "prefix_map",
 		.map_want = {
 			.key_size = sizeof(__u32),
-			.value_size = sizeof(struct ip_stats_rec),
-			.max_entries = XDP_ACTION_MAX,
+			.value_size = sizeof(struct cidr),
+			.max_entries = 1,
 		},
 	};
-	int interval = 2;
 	int ch;
-
+	
 	while ((ch = getopt(argc, argv, "d:f:p:")) != -1) {
 		switch (ch) {
 		case 'd':
@@ -37,14 +37,5 @@ main(int argc, char **argv)
 		return -1;
 	}
 
-	FILE *fp;
-	fp = fopen("/tmp/ip-stats.csv", "w");
-	if(fp == NULL)
-		printf("Error!");
-
-	fprintf(fp, "perid,ipv4_rx_packets,pps_ipv4,ipv4_rx_bytes,bytess_ipv4,ipv6_rx_packets,pps_ipv6,ipv6_rx_bytes,bytess_ipv6\n");
-	fclose(fp);
-
-	stats_poll(xdp_map.map_fd, xdp_map.map_info.type, interval);*/
 	return 0;
 }
