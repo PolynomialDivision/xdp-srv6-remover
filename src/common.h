@@ -11,8 +11,14 @@
 #include <linux/in.h>
 
 #include <inttypes.h>
+#include <stdbool.h>
 
 struct cidr {
 	uint32_t prefix;
-	struct in6_addr v6;
+	union {
+		struct in6_addr v6;
+	} addr;
+	union {
+		char v6[sizeof("FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:255.255.255.255/128 ")];
+	} buf;
 };

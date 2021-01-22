@@ -21,10 +21,13 @@ static inline int check(struct cidr *a, struct in6_addr ip) {
 	
 	uint8_t i = (128 - a->prefix) / 8;
 	uint8_t m = ~((1 << ((128 - a->prefix) % 8)) - 1);
-	uint8_t net1 = a->v6.s6_addr[15-i] & m;
+	uint8_t net1 = a->addr.v6.s6_addr[15-i] & m;
 	uint8_t net2 = ip.s6_addr[15-i] & m;
 
-	if ((net1 == net2) && ((i == 15) || !memcmp(&a->v6.s6_addr, &ip.s6_addr, 15-i)))
+	if(a->prefix == 0)
+		return 1;
+
+	if ((net1 == net2) && ((i == 15) || !memcmp(&a->addr.v6.s6_addr, &ip.s6_addr, 15-i)))
 	{
 		return 1;
 	}
@@ -78,7 +81,7 @@ int xdp_srv6_func(struct xdp_md *ctx)
 	if (!cidr)
 		goto out;
 	
-	if(!check(cidr, ipv6_orig_header->daddr);)
+	if(!check(cidr, ipv6_orig_header->daddr))
 		goto out;
 
 	// -------- checking done --------
