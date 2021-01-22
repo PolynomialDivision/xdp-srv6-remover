@@ -42,6 +42,7 @@ err:
 int
 main(int argc, char **argv)
 {
+	struct cidr *cidr;
 	struct xdp_map xdp_map = {
 		.prog = "xdp_srv6_func",
 		.map = "prefix_map",
@@ -58,6 +59,10 @@ main(int argc, char **argv)
 		case 'd':
 			xdp_map.net = optarg;
 			break;
+		case 'p':
+			// parse prefix
+			cidr = cidr_parse6(optarg);
+			break;
 		default:
 			fprintf(stderr, "Invalid argument\n");
 			exit(-1);
@@ -72,8 +77,6 @@ main(int argc, char **argv)
 		fprintf(stderr, "failed to xdp_map map\n");
 		return -1;
 	}
-
-	struct cidr *cidr = cidr_parse6("::/0");
 
 	int key = 0;
 	if (bpf_map_update_elem(xdp_map.map_fd, &key, &cidr, 0) < 0) {
