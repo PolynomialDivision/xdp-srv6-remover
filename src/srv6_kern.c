@@ -80,6 +80,8 @@ int xdp_srv6_func(struct xdp_md *ctx)
 			goto out;
 		}
 	}
+	if (i >= 16)
+		goto out;
 
 	__u8 net1 = ipv6_orig_header->daddr.s6_addr[i];
 	__u8 net2 = cidr->addr.v6.s6_addr[i];
