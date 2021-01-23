@@ -67,7 +67,7 @@ int xdp_srv6_func(struct xdp_md *ctx)
 
 	int prefix_limit = (128 - cidr->prefix) / 8;
 	int i;
-	for (i = 0; i < 15; i++)
+	for (i = 0; i < 16; i++)
 	{
 		__u8 net1 = ipv6_orig_header->daddr.s6_addr[i];
 		__u8 net2 = cidr->addr.v6.s6_addr[i];
