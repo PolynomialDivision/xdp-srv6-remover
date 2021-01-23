@@ -5,6 +5,7 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_endian.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #define IPV6_EXT_ROUTING   43
 #define IPV6_ENCAP 41           // [RFC2473]
@@ -17,26 +18,6 @@ struct bpf_map_def SEC("maps") prefix_map = {
 	.value_size  = sizeof(struct cidr),
 	.max_entries = 1,
 };
-
-static inline int check(struct cidr *a, struct in6_addr ip) {
-	/* copied from owipcalc.c */
-	
-	uint8_t i = (128 - a->prefix) / 8;
-	uint8_t m = ~((1 << ((128 - a->prefix) % 8)) - 1);
-	uint8_t net1 = a->addr.v6.s6_addr[15-i] & m;
-	uint8_t net2 = ip.s6_addr[15-i] & m;
-
-	if(a->prefix == 0)
-		return 1;
-
-	/* in the 5.4er it seems that we do not have memcmp? */
-	/*if ((net1 == net2) && ((i == 15) || !__builtin_memcmp(&a->addr.v6.s6_addr, &ip.s6_addr, 15-i)))
-	{
-		return 1;
-	}*/
-
-	return 0;
-}
 
 SEC("srv6-remover")
 int xdp_srv6_func(struct xdp_md *ctx)
@@ -83,9 +64,34 @@ int xdp_srv6_func(struct xdp_md *ctx)
 	struct cidr *cidr = bpf_map_lookup_elem(&prefix_map, &key);
 	if (!cidr)
 		goto out;
-	
-	if(!check(cidr, ipv6_orig_header->daddr))
+
+	int prefix_limit = (128 - cidr->prefix) / 8;
+	int i;
+	for (i = 0; i < 15; i++)
+	{
+		__u8 net1 = ipv6_orig_header->daddr.s6_addr[i];
+		__u8 net2 = cidr->addr.v6.s6_addr[i];
+
+		if (i >= prefix_limit)
+			break;
+
+		if (net1 != net2)
+		{
+			goto out;
+		}
+	}
+
+	__u8 net1 = ipv6_orig_header->daddr.s6_addr[i];
+	__u8 net2 = cidr->addr.v6.s6_addr[i];
+	__u8 mask = ~((1 << ((128 - cidr->prefix) % 8)) - 1);
+
+	net1 &= mask;
+	net2 &= mask;
+
+	if (net1 != net2)
+	{
 		goto out;
+	}
 
 	// -------- checking done --------
 
