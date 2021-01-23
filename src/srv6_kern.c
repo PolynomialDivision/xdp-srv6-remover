@@ -65,7 +65,7 @@ int xdp_srv6_func(struct xdp_md *ctx)
 	if (!cidr)
 		goto out;
 
-	int prefix_limit = (128 - cidr->prefix) / 8;
+	int prefix_limit = 15 - ((128 - cidr->prefix) / 8);
 	int i;
 	for (i = 0; i < 16; i++)
 	{
