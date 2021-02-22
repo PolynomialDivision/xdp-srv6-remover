@@ -12,11 +12,13 @@
 
 #define ipv6_optlen(p)  (((p)->hdrlen+1) << 3)
 
+#define MAX_CIDR 3
+
 struct bpf_map_def SEC("maps") prefix_map = {
 	.type        = BPF_MAP_TYPE_ARRAY,
 	.key_size    = sizeof(__u32),
 	.value_size  = sizeof(struct cidr),
-	.max_entries = 1,
+	.max_entries = MAX_CIDR,
 };
 
 SEC("srv6-remover")
@@ -60,40 +62,52 @@ int xdp_srv6_func(struct xdp_md *ctx)
 
 	// -------- checking --------
 
-	__u32 key = 0;
-	struct cidr *cidr = bpf_map_lookup_elem(&prefix_map, &key);
-	if (!cidr)
-		goto out;
+	int inprefix=0;
+	int j;
+	for (j = 0; j <= MAX_CIDR; j++){
+		__u32 key = (__u32)j;
+		struct cidr *cidr = bpf_map_lookup_elem(&prefix_map, &key);
+		if (!cidr)
+			goto loop;
+		int prefix_limit = 15 - ((128 - cidr->prefix) / 8);
+		int i;
+		for (i = 0; i < 16; i++)
+		{
+			__u8 net1 = ipv6_orig_header->daddr.s6_addr[i];
+			__u8 net2 = cidr->addr.v6.s6_addr[i];
 
-	int prefix_limit = 15 - ((128 - cidr->prefix) / 8);
-	int i;
-	for (i = 0; i < 16; i++)
-	{
+			if (i >= prefix_limit)
+				break;
+
+			if (net1 != net2)
+			{
+				goto loop;
+			}
+		}
+		if (i >= 16)
+			goto loop;
+
 		__u8 net1 = ipv6_orig_header->daddr.s6_addr[i];
 		__u8 net2 = cidr->addr.v6.s6_addr[i];
+		__u8 mask = ~((1 << ((128 - cidr->prefix) % 8)) - 1);
 
-		if (i >= prefix_limit)
-			break;
+		net1 &= mask;
+		net2 &= mask;
 
 		if (net1 != net2)
 		{
-			goto out;
+			goto loop;
 		}
+
+		// if we reach here, some prefix is announced
+		inprefix=1;
+		break;
+loop:
+		continue;
 	}
-	if (i >= 16)
+
+	if (!inprefix)
 		goto out;
-
-	__u8 net1 = ipv6_orig_header->daddr.s6_addr[i];
-	__u8 net2 = cidr->addr.v6.s6_addr[i];
-	__u8 mask = ~((1 << ((128 - cidr->prefix) % 8)) - 1);
-
-	net1 &= mask;
-	net2 &= mask;
-
-	if (net1 != net2)
-	{
-		goto out;
-	}
 
 	// -------- checking done --------
 

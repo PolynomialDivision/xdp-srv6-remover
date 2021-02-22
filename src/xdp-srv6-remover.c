@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
           },
   };
   int ch;
-
+  int key;
   while ((ch = getopt(argc, argv, "d:f:p:")) != -1) {
     switch (ch) {
     case 'd':
@@ -82,6 +82,10 @@ int main(int argc, char **argv) {
     case 'p':
       // parse prefix
       prefix = cidr_parse6(optarg);
+      break;
+    case 'k':
+      // parse prefix
+      key = atoi(optarg);
       break;
     default:
       fprintf(stderr, "Invalid argument\n");
@@ -101,7 +105,7 @@ int main(int argc, char **argv) {
   printf("Updating Map with: ");
   cidr_print6(prefix);
 
-  int key = 0;
+  //int key = 0;
   if (bpf_map_update_elem(xdp_map.map_fd, &key, prefix, 0) < 0) {
     fprintf(stderr, "WARN: Failed to update bpf map file: err(%d):%s\n", errno,
             strerror(errno));
