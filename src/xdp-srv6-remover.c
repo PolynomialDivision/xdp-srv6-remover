@@ -69,12 +69,12 @@ int main(int argc, char **argv) {
           {
               .key_size = sizeof(__u32),
               .value_size = sizeof(struct cidr),
-              .max_entries = 1,
+              .max_entries = 3,
           },
   };
   int ch;
   int key;
-  while ((ch = getopt(argc, argv, "d:f:p:")) != -1) {
+  while ((ch = getopt(argc, argv, "d:f:p:k:")) != -1) {
     switch (ch) {
     case 'd':
       xdp_map.net = optarg;
