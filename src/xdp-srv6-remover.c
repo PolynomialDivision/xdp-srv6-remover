@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
   struct cidr *prefix = NULL;
 
   struct xdp_map xdp_map = {
-      .prog = "xdp_srv6_func",
+      .prog = "xdp_srv6_inline_remover",
       .map = "prefix_map",
       .map_want =
           {
