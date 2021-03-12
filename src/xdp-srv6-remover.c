@@ -69,7 +69,7 @@ int main(int argc, char **argv) {
           {
               .key_size = sizeof(__u32),
               .value_size = sizeof(struct cidr),
-              .max_entries = 3,
+              .max_entries = MAX_CIDR,
           },
   };
   int ch;

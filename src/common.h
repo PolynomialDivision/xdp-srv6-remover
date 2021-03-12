@@ -14,6 +14,8 @@
 #include <inttypes.h>
 #include <stdbool.h>
 
+#define MAX_CIDR 4
+
 struct cidr {
 	uint32_t prefix;
 	union {

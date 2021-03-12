@@ -12,8 +12,6 @@
 
 #define ipv6_optlen(p) (((p)->hdrlen + 1) << 3)
 
-#define MAX_CIDR 3
-
 struct ip6_addr_t {
   unsigned long long hi;
   unsigned long long lo;
