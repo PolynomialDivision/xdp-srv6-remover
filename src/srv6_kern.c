@@ -61,6 +61,9 @@ int xdp_srv6_func(struct xdp_md *ctx) {
     goto out;
   oldr_ipv6hdr = *ip6_srv6_hdr;
 
+  if(bpf_ntohs(ip6_srv6_hdr->hop_limit < 10))
+    goto out;
+
   // Routing Header
   struct ipv6_rt_hdr *ip6_hdr = (struct ipv6_rt_hdr *)(ip6_srv6_hdr + 1);
   if (ip6_hdr + 1 > data_end)
