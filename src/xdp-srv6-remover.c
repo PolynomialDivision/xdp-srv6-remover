@@ -104,6 +104,7 @@ int main(int argc, char **argv) {
 
   printf("Updating Map with: ");
   cidr_print6(prefix);
+  printf("\n");
 
   //int key = 0;
   if (bpf_map_update_elem(xdp_map.map_fd, &key, prefix, 0) < 0) {
