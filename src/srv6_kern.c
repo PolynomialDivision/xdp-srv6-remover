@@ -29,11 +29,25 @@ struct ip6_srh_t {
   struct ip6_addr_t segments[0];
 };
 
-struct bpf_map_def SEC("maps") prefix_map = {
+struct bpf_map_def SEC("maps") prefixmap = {
     .type = BPF_MAP_TYPE_ARRAY,
     .key_size = sizeof(__u32),
     .value_size = sizeof(struct cidr),
     .max_entries = MAX_CIDR,
+};
+
+struct bpf_map_def SEC("maps") segpathmap = {
+    .type = BPF_MAP_TYPE_ARRAY,
+    .key_size = sizeof(__u32),
+    .value_size = sizeof(struct cidr),
+    .max_entries = MAX_SEG_LIST,
+};
+
+struct bpf_map_def SEC("maps") segleftmap = {
+    .type = BPF_MAP_TYPE_ARRAY,
+    .key_size = sizeof(__u32),
+    .value_size = sizeof(__u32),
+    .max_entries = 1,
 };
 
 static int in_prefix(unsigned char ip[16])
@@ -44,7 +58,7 @@ static int in_prefix(unsigned char ip[16])
   int j;
   for (j = 0; j <= MAX_CIDR; j++) {
     __u32 key = (__u32)j;
-    struct cidr *cidr = bpf_map_lookup_elem(&prefix_map, &key);
+    struct cidr *cidr = bpf_map_lookup_elem(&prefixmap, &key);
     if (!cidr)
       goto loop;
     int prefix_limit = 15 - ((128 - cidr->prefix) / 8);
@@ -126,15 +140,36 @@ int xdp_srv6_func(struct xdp_md *ctx) {
   oldr_ipv6hdr = *ip6_srv6_hdr;
 
   // Routing Header
-  struct ipv6_rt_hdr *ip6_hdr = (struct ipv6_rt_hdr *)(ip6_srv6_hdr + 1);
+  struct ip6_srh_t *ip6_hdr = (struct ip6_srh_t *)(ip6_srv6_hdr + 1);
   if (ip6_hdr + 1 > data_end)
     goto out;
   if (ip6_hdr->nexthdr != IPV6_ENCAP) // htons correct?
     goto out;
 
+  struct ip6_addr_t *seg;
+  seg = (struct ip6_addr_t *)(ip6_hdr + 1);
+
+  if (seg + MAX_SEG_LIST > data_end)
+    goto out;
+
   // Here we need to check the whole segment-path
   // So we need to feed the segmentpath via a map from the userspace
   // into the kernel
+  for (int i = 0; i < MAX_SEG_LIST; i++) 
+  {
+    __u32 key = (__u32)i;
+    struct cidr *cidr = bpf_map_lookup_elem(&segpathmap, &key);
+    if (!cidr)
+      goto out;
+    
+    for (int j = 0; j < 16; j++)
+    {
+      if(((unsigned char*)seg)[j] != cidr->addr.v6.s6_addr[j]) {
+        // here we have to check if we are the last hop
+        goto out;
+      }
+    }
+  }
 
   // "Orig" IPv6 Header
   struct ipv6hdr *ipv6_orig_header =
@@ -219,7 +254,7 @@ int xdp_srv6_inline_remover(struct xdp_md *ctx) {
   int j;
   for (j = 0; j <= MAX_CIDR; j++) {
     __u32 key = (__u32)j;
-    struct cidr *cidr = bpf_map_lookup_elem(&prefix_map, &key);
+    struct cidr *cidr = bpf_map_lookup_elem(&prefixmap, &key);
     if (!cidr)
       goto loop;
     int prefix_limit = 15 - ((128 - cidr->prefix) / 8);
