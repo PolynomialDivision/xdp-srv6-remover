@@ -117,8 +117,8 @@ int xdp_srv6_func(struct xdp_md *ctx) {
     {
       // Here we have the options:
       // - xdp_drop
+      // - xdp_tx (but switch ethernet header before)
       // - bpf_redirect(...)
-      // - bpf_tx (but switch ethernet header before)
       return XDP_DROP;
     }
     goto out;
@@ -133,6 +133,8 @@ int xdp_srv6_func(struct xdp_md *ctx) {
     goto out;
 
   // Here we need to check the whole segment-path
+  // So we need to feed the segmentpath via a map from the userspace
+  // into the kernel
 
   // "Orig" IPv6 Header
   struct ipv6hdr *ipv6_orig_header =
