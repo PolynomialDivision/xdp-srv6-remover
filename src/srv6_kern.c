@@ -36,6 +36,61 @@ struct bpf_map_def SEC("maps") prefix_map = {
     .max_entries = MAX_CIDR,
 };
 
+static int in_prefix(unsigned char ip[16])
+{
+    // -------- checking --------
+
+  int inprefix = 0;
+  int j;
+  for (j = 0; j <= MAX_CIDR; j++) {
+    __u32 key = (__u32)j;
+    struct cidr *cidr = bpf_map_lookup_elem(&prefix_map, &key);
+    if (!cidr)
+      goto loop;
+    int prefix_limit = 15 - ((128 - cidr->prefix) / 8);
+    int i;
+    for (i = 0; i < 16; i++) {
+      __u8 net1 = ip[i];
+      __u8 net2 = cidr->addr.v6.s6_addr[i];
+
+      if (i >= prefix_limit)
+        break;
+
+      if (net1 != net2) {
+        goto loop;
+      }
+    }
+    if (i >= 16)
+      goto loop;
+
+    __u8 net1 = ip[i];
+    __u8 net2 = cidr->addr.v6.s6_addr[i];
+    __u8 mask = ~((1 << ((128 - cidr->prefix) % 8)) - 1);
+
+    net1 &= mask;
+    net2 &= mask;
+
+    if (net1 != net2) {
+      goto loop;
+    }
+
+    // if we reach here, some prefix is announced
+    inprefix = 1;
+    break;
+  loop:
+    continue;
+  }
+
+  if (!inprefix)
+    goto out;
+
+  return 1;
+
+  // -------- checking done --------
+out:
+  return 0;
+}
+
 SEC("srv6-remover")
 int xdp_srv6_func(struct xdp_md *ctx) {
   volatile struct ethhdr old_ehdr;
@@ -57,8 +112,13 @@ int xdp_srv6_func(struct xdp_md *ctx) {
   struct ipv6hdr *ip6_srv6_hdr = (void *)(ehdr + 1);
   if (ip6_srv6_hdr + 1 > data_end)
     goto out;
-  if (ip6_srv6_hdr->nexthdr != IPV6_EXT_ROUTING)
+  if (ip6_srv6_hdr->nexthdr != IPV6_EXT_ROUTING){
+    if (in_prefix(ip6_srv6_hdr->daddr.s6_addr))
+    {
+      return XDP_DROP;
+    }
     goto out;
+  }
   oldr_ipv6hdr = *ip6_srv6_hdr;
 
   // Routing Header
@@ -75,53 +135,10 @@ int xdp_srv6_func(struct xdp_md *ctx) {
     goto out;
   oldr_ipv6_orig_hdr = *ipv6_orig_header;
 
-  // -------- checking --------
-
-  int inprefix = 0;
-  int j;
-  for (j = 0; j <= MAX_CIDR; j++) {
-    __u32 key = (__u32)j;
-    struct cidr *cidr = bpf_map_lookup_elem(&prefix_map, &key);
-    if (!cidr)
-      goto loop;
-    int prefix_limit = 15 - ((128 - cidr->prefix) / 8);
-    int i;
-    for (i = 0; i < 16; i++) {
-      __u8 net1 = ipv6_orig_header->daddr.s6_addr[i];
-      __u8 net2 = cidr->addr.v6.s6_addr[i];
-
-      if (i >= prefix_limit)
-        break;
-
-      if (net1 != net2) {
-        goto loop;
-      }
-    }
-    if (i >= 16)
-      goto loop;
-
-    __u8 net1 = ipv6_orig_header->daddr.s6_addr[i];
-    __u8 net2 = cidr->addr.v6.s6_addr[i];
-    __u8 mask = ~((1 << ((128 - cidr->prefix) % 8)) - 1);
-
-    net1 &= mask;
-    net2 &= mask;
-
-    if (net1 != net2) {
-      goto loop;
-    }
-
-    // if we reach here, some prefix is announced
-    inprefix = 1;
-    break;
-  loop:
-    continue;
-  }
-
-  if (!inprefix)
+  if (!in_prefix(ipv6_orig_header->daddr.s6_addr))
+  {
     goto out;
-
-  // -------- checking done --------
+  }
 
   // shrink by the size of ip6_srv6_hdr + ipv6_hdr->hdrlen*10 + ip6_hdr
   int offset = sizeof(struct ipv6hdr) + ipv6_optlen(ip6_hdr);
