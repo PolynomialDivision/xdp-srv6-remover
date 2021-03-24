@@ -115,6 +115,10 @@ int xdp_srv6_func(struct xdp_md *ctx) {
   if (ip6_srv6_hdr->nexthdr != IPV6_EXT_ROUTING){
     if (in_prefix(ip6_srv6_hdr->daddr.s6_addr))
     {
+      // Here we have the options:
+      // - xdp_drop
+      // - bpf_redirect(...)
+      // - bpf_tx (but switch ethernet header before)
       return XDP_DROP;
     }
     goto out;
@@ -127,6 +131,8 @@ int xdp_srv6_func(struct xdp_md *ctx) {
     goto out;
   if (ip6_hdr->nexthdr != IPV6_ENCAP) // htons correct?
     goto out;
+
+  // Here we need to check the whole segment-path
 
   // "Orig" IPv6 Header
   struct ipv6hdr *ipv6_orig_header =
