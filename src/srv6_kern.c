@@ -65,7 +65,7 @@ int xdp_srv6_func(struct xdp_md *ctx) {
   struct ipv6_rt_hdr *ip6_hdr = (struct ipv6_rt_hdr *)(ip6_srv6_hdr + 1);
   if (ip6_hdr + 1 > data_end)
     goto out;
-  if (ip6_hdr->nexthdr != IPV6_ENCAP) // htons correct?
+  if (ip6_hdr->nexthdr != IPV6_ENCAP)
     goto out;
 
   // "Orig" IPv6 Header
@@ -123,7 +123,7 @@ int xdp_srv6_func(struct xdp_md *ctx) {
 
   // -------- checking done --------
 
-  // shrink by the size of ip6_srv6_hdr + ipv6_hdr->hdrlen*10 + ip6_hdr
+  // shrink
   int offset = sizeof(struct ipv6hdr) + ipv6_optlen(ip6_hdr);
   if (bpf_xdp_adjust_head(ctx, offset)) {
     goto out;

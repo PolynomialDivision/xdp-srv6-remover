@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 
+/* based on ubpf */
+
 #include <arpa/inet.h>
 
 #include "common.h"
@@ -106,7 +108,6 @@ int main(int argc, char **argv) {
   cidr_print6(prefix);
   printf("\n");
 
-  //int key = 0;
   if (bpf_map_update_elem(xdp_map.map_fd, &key, prefix, 0) < 0) {
     fprintf(stderr, "WARN: Failed to update bpf map file: err(%d):%s\n", errno,
             strerror(errno));
