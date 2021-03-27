@@ -4,6 +4,7 @@
 
 #include <bpf/bpf_endian.h>
 #include <bpf/bpf_helpers.h>
+#include <linux/bpf.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -166,9 +167,10 @@ int xdp_srv6_func(struct xdp_md *ctx) {
     {
       if(((unsigned char*)seg)[j] != cidr->addr.v6.s6_addr[j]) {
         // here we have to check if we are the last hop
-        goto out;
+        return XDP_DROP;
       }
     }
+    seg = seg + 1;
   }
 
   // "Orig" IPv6 Header

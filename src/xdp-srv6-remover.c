@@ -122,6 +122,8 @@ static void update_segpath_map(char *net, char *segpathstring, int segleft) {
     }
   }
 
+  printf("segleftmap!\n");
+
   struct xdp_map xdp_map_segleft = {
       .prog = "xdp_srv6_func",
       .map = "segleftmap",
